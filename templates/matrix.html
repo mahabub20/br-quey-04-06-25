@@ -1,933 +1,1139 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Matrix | Segmented Seat Matrix</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="icon"
-        href="https://raw.githubusercontent.com/nishatrhythm/Bangladesh-Railway-Train-and-Fare-List-with-Route-Map/main/images/bangladesh-railway.png">
-</head>
-
-<body>
-    <div class="flyout-notification" id="flyoutNotification">
-        <span id="flyoutMessage"></span>
-        <i class="fas fa-times flyout-close" id="flyoutClose"></i>
-    </div>
-    <noscript>
-        <div class="matrix-container noscript-warning">
-            <h2><i class="fas fa-exclamation-circle"></i> Please Enable JavaScript</h2>
-            <p>This website requires JavaScript to function properly. Enable it in your browser settings to access full
-                functionality and check train seat availability.</p>
-            <div class="instructions">
-                <strong>How to enable:</strong> Go to your browser settings > Privacy/Security > Enable JavaScript.
-                Refresh the page after enabling.
-            </div>
-        </div>
-    </noscript>
-
-    <div class="matrix-container">
-        <h1><i class="fas fa-th-list"></i> Seat Matrix for {{ train_name }}</h1>
-
-        <a href="/" class="btn-primary">
-            <i class="fas fa-arrow-left"></i> Back to Search
-        </a>
-
-        <div class="date-header">
-            <h2><i class="fas fa-calendar-alt"></i> Journey Date: {{ date }}</h2>
-            {% if has_segmented_dates %}
-            <div class="travel-alert">
-                <div class="alert-header">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h3>Date Selection for Overnight Journey</h3>
-                </div>
-                <p>This train departs from its origin station on {{ date }}, but reaches certain stations after midnight
-                    — in the early hours of {{ next_day_str }}. Ticket availability for those post-midnight arrivals may
-                    appear under {{ next_day_str }}.</p>
-                <div class="alert-tip">
-                    <i class="fas fa-lightbulb"></i>
-                    <p>Tip: To find tickets for arrivals early on {{ date }}, try searching with {{ prev_day_str }} as
-                        your
-                        journey date.</p>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-
-        <div class="route-card route-visualization-card">
-            <details class="route-collapse">
-                <summary class="route-toggle-btn">
-                    <span class="route-toggle-text"><i class="fas fa-route"></i> Expand to view Train Route</span>
-                    <i class="fas fa-chevron-down toggle-arrow"></i>
-                </summary>
-
-                <div class="route-body">
-                    <div class="route-train-header">
-                        <h3><i class="fas fa-subway"></i> {{ train_name }}</h3>
-                        <div class="run-days-list">
-                            <span class="run-days-title">Runs on:</span>
-                            {% for day in ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'] %}
-                            <span class="run-day {% if day not in days %}off{% endif %}">
-                                {{ day }}{% if day not in days %}<sup>(off)</sup>{% endif %}
-                            </span>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <div class="station-timeline">
-                        {% for stop in routes %}
-                        <div class="station-item {% if loop.first %}start{% elif loop.last %}end{% endif %}">
-                            <div class="station-node">
-                                <div class="station-icon-circle">
-                                    <i class="fas fa-location-dot"></i>
-                                </div>
-                                {% if not loop.last %}
-                                <div class="station-line"></div>
-                                {% endif %}
-                            </div>
-                            <div class="station-info">
-                                <div class="station-header">
-                                    <div class="station-name">
-                                        {{ stop.city }}
-                                        {% if stop.display_date %}
-                                        <span class="station-date">{{ stop.display_date }}</span>
-                                        {% endif %}
-                                    </div>
-                                    {% if loop.first %}
-                                    <span class="station-type-label start">Origin</span>
-                                    {% elif loop.last %}
-                                    <span class="station-type-label end">Destination</span>
-                                    {% endif %}
-                                </div>
-                                <div class="station-meta-row">
-                                    <div class="meta-item">
-                                        <strong>Arrival:</strong>
-                                        {% if stop.arrival_time %}
-                                        {{ stop.arrival_time.replace(' BST', '') }}
-                                        {% else %}
-                                        ———
-                                        {% endif %}
-                                    </div>
-
-                                    <div class="meta-item">
-                                        <strong>Departure:</strong>
-                                        {% if stop.departure_time %}
-                                        {{ stop.departure_time.replace(' BST', '') }}
-                                        {% else %}
-                                        ———
-                                        {% endif %}
-                                    </div>
-
-                                    <div class="meta-item">
-                                        <strong>Halt:</strong>
-                                        {% if stop.halt and stop.halt != '---' %}
-                                        {{ stop.halt|int }} min
-                                        {% else %}
-                                        ———
-                                        {% endif %}
-                                    </div>
-
-                                    <div class="meta-item">
-                                        <strong>Duration:</strong>
-                                        {% if stop.duration and stop.duration != '---' %}
-                                        {% set hours, minutes = stop.duration.split(':') %}
-                                        {% set h = hours|int %}
-                                        {% set m = minutes|int %}
-                                        {% if h > 0 and m > 0 %}
-                                        {{ h }} h {{ m }} min
-                                        {% elif h > 0 %}
-                                        {{ h }} h
-                                        {% elif m > 0 %}
-                                        {{ m }} min
-                                        {% else %}
-                                        ———
-                                        {% endif %}
-                                        {% else %}
-                                        ———
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="total-journey-time">
-                        <i class="fas fa-clock"></i> Total Duration:
-                        {% if total_duration %}
-                        {% set hours, minutes = total_duration.split(':') %}
-                        {% set h = hours|int %}
-                        {% set m = minutes|int %}
-                        {% if h > 0 and m > 0 %}
-                        {{ h }} h {{ m }} min
-                        {% elif h > 0 %}
-                        {{ h }} h
-                        {% else %}
-                        {{ m }} min
-                        {% endif %}
-                        {% else %}
-                        ———
-                        {% endif %}
-                    </div>
-                </div>
-            </details>
-        </div>
-
-        {% for seat_type in seat_types %}
-        {% if has_data_map[seat_type] %}
-        {% set matrix = fare_matrices[seat_type] %}
-        <div class="matrix-card">
-            <h3><i class="fas fa-chair"></i> Seat Type: {{ seat_type }}</h3>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>From → To</th>
-                            {% for col in stations %}<th>{{ col }}</th>{% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for from_station in stations %}
-                        <tr>
-                            <td><strong>{{ from_station }}</strong></td>
-                            {% for to_station in stations %}
-                            {% if stations.index(from_station) >= stations.index(to_station) %}
-                            <td class="disabled-cell"></td>
-                            {% else %}
-                            {% set cell = matrix[from_station].get(to_station) %}
-                            {% if cell and (cell.online + cell.offline) > 0 %}
-                            {# Convert station_dates[from_station] (YYYY-MM-DD) to DD-MMM-YYYY #}
-                            {% set doj = station_dates_formatted.get(from_station, date) %}
-                            <td class="available">
-                                <div class="cell-content">
-                                    <span class="seat-count">{{ cell.online + cell.offline }}</span>
-                                    <span class="fare"><span class="taka-icon">৳</span><span class="fare-value">{{
-                                            (cell.fare + cell.vat_amount) | int }}</span></span>
-                                    <a href="https://eticket.railway.gov.bd/booking/train/search?fromcity={{ from_station }}&tocity={{ to_station }}&doj={{ doj }}&class={{ seat_type }}"
-                                        class="buy-link" target="_blank">
-                                        <i class="fas fa-external-link-alt"></i> Buy
-                                    </a>
-                                </div>
-                            </td>
-                            {% else %}
-                            <td class="disabled-cell"></td>
-                            {% endif %}
-                            {% endif %}
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% endif %}
-        {% endfor %}
-
-        <div class="ca-check-availability-section">
-            <h2><i class="fas fa-search"></i> Check Ticket Availability</h2>
-            <form id="ca-availability-form" class="ca-availability-form">
-                <div class="ca-form-row">
-                    <div class="ca-form-group">
-                        <label for="ca-origin-station-input">From Station</label>
-                        <div class="ca-input-with-icon ca-custom-dropdown" id="ca-origin-station-dropdown">
-                            <i class="fas fa-train ca-input-icon"></i>
-                            <input type="text" id="ca-origin-station-input" placeholder="Select from station"
-                                autocomplete="off" readonly>
-                            <input type="hidden" id="ca-origin-station" name="ca_origin_station">
-                            <div class="ca-dropdown-menu" id="ca-origin-station-menu" style="display: none;">
-                                <div class="ca-dropdown-options" id="ca-origin-station-options">
-                                    {% for station in stations %}
-                                    <div class="ca-dropdown-option" data-value="{{ station }}">{{ station }}</div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                        <span class="ca-error-message" id="ca-origin-station-error">From station is required</span>
-                    </div>
-                    <div class="swap-icon-wrapper" id="ca-swap-button" title="Swap stations">
-                        <i class="fas fa-exchange-alt swap-icon"></i>
-                    </div>
-                    <div class="ca-form-group">
-                        <label for="ca-destination-station-input">To Station</label>
-                        <div class="ca-input-with-icon ca-custom-dropdown" id="ca-destination-station-dropdown">
-                            <i class="fas fa-train ca-input-icon"></i>
-                            <input type="text" id="ca-destination-station-input"
-                                placeholder="Select to station" autocomplete="off" readonly>
-                            <input type="hidden" id="ca-destination-station" name="ca_destination_station">
-                            <div class="ca-dropdown-menu" id="ca-destination-station-menu" style="display: none;">
-                                <div class="ca-dropdown-options" id="ca-destination-station-options">
-                                    {% for station in stations %}
-                                    <div class="ca-dropdown-option" data-value="{{ station }}">{{ station }}</div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                        <span class="ca-error-message" id="ca-destination-station-error">To station is
-                            required</span>
-                    </div>
-                </div>
-                <div class="ca-form-group ca-submit-btn">
-                    <button type="submit" class="ca-btn-primary">
-                        <i class="fas fa-search"></i> Check Availability
-                    </button>
-                </div>
-                <p class="ca-info-text">
-                    <i class="fas fa-info-circle"></i>
-                    Ticket availability is shown based on the last matrix you generated. For the most accurate and updated results, please generate the matrix again.
-                </p>
-            </form>
-            <div class="ca-route-results" id="ca-route-results" style="display: none;">
-                <!-- Results will be dynamically inserted here -->
-            </div>
-        </div>
-
-        <a href="/" class="btn-primary">
-            <i class="fas fa-arrow-left"></i> Back to Search
-        </a>
-    </div>
-
-    <button id="backToTopBtn">
-        <i class="fas fa-arrow-up"></i>
-    </button>
-
-    <script src="/static/js/script.js"></script>
-    
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const tables = document.querySelectorAll(".table-responsive");
-
-            tables.forEach(table => {
-                let isDown = false;
-                let startX;
-                let startY;
-                let scrollLeft;
-                let scrollTop;
-
-                table.addEventListener("mousedown", (e) => {
-                    isDown = true;
-                    table.classList.add("dragging");
-                    startX = e.pageX - table.offsetLeft;
-                    startY = e.pageY - table.offsetTop;
-                    scrollLeft = table.scrollLeft;
-                    scrollTop = table.scrollTop;
-                    e.preventDefault();
-                });
-
-                table.addEventListener("mouseleave", () => {
-                    isDown = false;
-                    table.classList.remove("dragging");
-                });
-
-                table.addEventListener("mouseup", () => {
-                    isDown = false;
-                    table.classList.remove("dragging");
-                });
-
-                table.addEventListener("mousemove", (e) => {
-                    if (!isDown) return;
-                    e.preventDefault();
-                    const x = e.pageX - table.offsetLeft;
-                    const y = e.pageY - table.offsetTop;
-                    const walkX = (x - startX);
-                    const walkY = (y - startY);
-                    table.scrollLeft = scrollLeft - walkX;
-                    table.scrollTop = scrollTop - walkY;
-                });
-            });
-        });
-    </script>
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const details = document.querySelector(".route-collapse");
-            const textSpan = details.querySelector(".route-toggle-text");
-            const icon = details.querySelector(".toggle-arrow");
-
-            const updateText = () => {
-                if (details.open) {
-                    textSpan.innerHTML = '<i class="fas fa-route"></i> Collapse to hide Train Route';
-                    icon.style.transform = "rotate(180deg)";
-                } else {
-                    textSpan.innerHTML = '<i class="fas fa-route"></i> Expand to view Train Route';
-                    icon.style.transform = "rotate(0deg)";
-                }
-            };
-
-            updateText();
-
-            details.addEventListener("toggle", updateText);
-        });
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const detailsElements = document.querySelectorAll('.route-visualization-card details');
-
-            detailsElements.forEach(details => {
-                const toggleBtn = details.querySelector('.route-toggle-btn');
-                const routeBody = details.querySelector('.route-body');
-
-                const updateContentHeight = () => {
-                    routeBody.style.height = 'auto';
-                    const height = routeBody.scrollHeight;
-                    routeBody.style.height = details.open ? `${height}px` : '0';
-                    return height;
-                };
-
-                requestAnimationFrame(() => {
-                    if (details.open) {
-                        routeBody.style.height = `${updateContentHeight()}px`;
-                        routeBody.style.opacity = '1';
-                    }
-                });
-
-                toggleBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-
-                    if (details.hasAttribute('open')) {
-                        routeBody.style.height = `${routeBody.scrollHeight}px`;
-                        requestAnimationFrame(() => {
-                            routeBody.style.height = '0';
-                            routeBody.style.opacity = '0';
-                        });
-                        setTimeout(() => {
-                            details.removeAttribute('open');
-                        }, 400);
-                    } else {
-                        details.setAttribute('open', '');
-                        routeBody.style.height = '0';
-                        routeBody.style.opacity = '0';
-                        requestAnimationFrame(() => {
-                            const height = routeBody.scrollHeight;
-                            routeBody.style.height = `${height}px`;
-                            routeBody.style.opacity = '1';
-                        });
-                        setTimeout(() => {
-                            routeBody.style.height = 'auto';
-                        }, 400);
-                    }
-                });
-                window.addEventListener('resize', () => {
-                    if (details.open) {
-                        routeBody.style.height = 'auto';
-                        routeBody.style.height = `${routeBody.scrollHeight}px`;
-                    }
-                });
-            });
-        });
-    </script>
-    <script>
-        setTimeout(function() {
-            window.location.href = '/';
-        }, 300000);
-    </script>
-    <script>
-        function setupAvailabilityDropdowns() {
-            ['origin', 'destination'].forEach(type => {
-                const dropdown = document.getElementById(`ca-${type}-station-dropdown`);
-                const textInput = document.getElementById(`ca-${type}-station-input`);
-                const dropdownMenu = document.getElementById(`ca-${type}-station-menu`);
-                const optionsContainer = document.getElementById(`ca-${type}-station-options`);
-                const hiddenInput = document.getElementById(`ca-${type}-station`);
-                const errorField = document.getElementById(`ca-${type}-station-error`);
-                let allOptions = Array.from(optionsContainer.querySelectorAll('.ca-dropdown-option'));
-
-                function updateDropdownOptions() {
-                    const otherInput = type === 'origin' ? document.getElementById('ca-destination-station') : document.getElementById('ca-origin-station');
-                    const otherValue = otherInput.value.trim();
-                    allOptions.forEach(option => {
-                        const isHidden = otherValue && option.dataset.value === otherValue;
-                        option.style.display = isHidden ? 'none' : 'block';
-                    });
-                    focusedOptionIndex = -1;
-                    updateFocusedOption();
-                }
-
-                function openDropdown() {
-                    dropdownMenu.style.display = 'block';
-                    updateDropdownOptions();
-                    focusedOptionIndex = -1;
-                }
-
-                function closeDropdown() {
-                    dropdownMenu.classList.add('fade-out');
-                    setTimeout(() => {
-                        dropdownMenu.style.display = 'none';
-                        dropdownMenu.classList.remove('fade-out');
-                        focusedOptionIndex = -1;
-                        updateFocusedOption();
-                    }, 200);
-                }
-
-                function selectOption(option) {
-                    const value = option.dataset.value;
-                    textInput.value = value;
-                    hiddenInput.value = value;
-                    allOptions.forEach(opt => opt.classList.remove('selected'));
-                    option.classList.add('selected');
-                    closeDropdown();
-
-                    if (errorField.classList.contains('show')) {
-                        errorField.classList.remove('show');
-                        errorField.classList.add('hide');
-                        textInput.classList.remove('error-input');
-                    }
-
-                    updateDropdownOptions();
-                    const otherDropdown = type === 'origin' ? document.getElementById('ca-destination-station-dropdown') : document.getElementById('ca-origin-station-dropdown');
-                    const otherMenu = otherDropdown.querySelector('.ca-dropdown-menu');
-                    if (otherMenu.style.display === 'block') {
-                        updateDropdownOptions();
-                    }
-                }
-
-                function updateFocusedOption() {
-                    allOptions.forEach(opt => opt.classList.remove('selected'));
-                    const visibleOptions = allOptions.filter(opt => opt.style.display !== 'none');
-                    if (focusedOptionIndex >= 0 && focusedOptionIndex < visibleOptions.length) {
-                        visibleOptions[focusedOptionIndex].classList.add('selected');
-                        visibleOptions[focusedOptionIndex].scrollIntoView({ block: 'nearest' });
-                    }
-                }
-
-                textInput.addEventListener('click', openDropdown);
-
-                textInput.addEventListener('keydown', (e) => {
-                    const visibleOptions = allOptions.filter(opt => opt.style.display !== 'none');
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        if (focusedOptionIndex < visibleOptions.length - 1) {
-                            focusedOptionIndex++;
-                            updateFocusedOption();
-                        }
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        if (focusedOptionIndex > 0) {
-                            focusedOptionIndex--;
-                            updateFocusedOption();
-                        }
-                    } else if (e.key === 'Enter' && focusedOptionIndex >= 0) {
-                        e.preventDefault();
-                        selectOption(visibleOptions[focusedOptionIndex]);
-                    } else if (e.key === 'Escape') {
-                        e.preventDefault();
-                        closeDropdown();
-                    }
-                });
-
-                allOptions.forEach(option => {
-                    option.addEventListener('click', () => {
-                        selectOption(option);
-                    });
-                });
-
-                document.addEventListener('click', (e) => {
-                    if (!dropdown.contains(e.target)) closeDropdown();
-                });
-            });
-
-            const swapButton = document.getElementById('ca-swap-button');
-            swapButton.addEventListener('click', () => {
-                const originInput = document.getElementById('ca-origin-station-input');
-                const destinationInput = document.getElementById('ca-destination-station-input');
-                const originHidden = document.getElementById('ca-origin-station');
-                const destinationHidden = document.getElementById('ca-destination-station');
-
-                const tempValue = originInput.value;
-                const tempHiddenValue = originHidden.value;
-
-                originInput.value = destinationInput.value;
-                originHidden.value = destinationHidden.value;
-                destinationInput.value = tempValue;
-                destinationHidden.value = tempHiddenValue;
-
-                ['origin', 'destination'].forEach(type => {
-                    const textInput = document.getElementById(`ca-${type}-station-input`);
-                    const hiddenInput = document.getElementById(`ca-${type}-station`);
-                    const optionsContainer = document.getElementById(`ca-${type}-station-options`);
-                    const allOptions = Array.from(optionsContainer.querySelectorAll('.ca-dropdown-option'));
-                    allOptions.forEach(opt => opt.classList.remove('selected'));
-                    if (hiddenInput.value) {
-                        const selectedOption = allOptions.find(opt => opt.dataset.value === hiddenInput.value);
-                        if (selectedOption) selectedOption.classList.add('selected');
-                    }
-                });
-
-                const resultsContainer = document.getElementById('ca-route-results');
-                resultsContainer.style.display = 'none';
-                resultsContainer.innerHTML = '';
-
-                swapButton.classList.add('rotate');
-                setTimeout(() => {
-                    swapButton.classList.remove('rotate');
-                }, 400);
-            });
-        }
-
-        function findRoutes(origin, destination, seatType, stations, fareMatrices) {
-            const queue = [[origin, [], 0]];
-            const visited = new Set();
-
-            while (queue.length) {
-                const [currentStation, path, totalFare] = queue.shift();
-
-                if (visited.has(currentStation)) continue;
-                visited.add(currentStation);
-
-                if (currentStation === destination) return [path, totalFare];
-
-                const currentIndex = stations.indexOf(currentStation);
-                for (let i = currentIndex + 1; i < stations.length; i++) {
-                    const nextStation = stations[i];
-                    const seatInfo = fareMatrices[seatType][currentStation][nextStation];
-                    if (seatInfo && seatInfo.online > 0) {
-                        const nextFare = parseFloat(seatInfo.fare);
-                        const vatAmount = parseFloat(seatInfo.vat_amount || 0);
-                        const charge = 20;
-                        const totalCost = nextFare + vatAmount + charge;
-                        const newPath = [...path, {
-                            from: currentStation,
-                            to: nextStation,
-                            base: nextFare,
-                            vat: vatAmount,
-                            charge: charge,
-                            total: totalCost,
-                            seats: seatInfo.online + seatInfo.offline,
-                            date: window.stationDates[currentStation]
-                        }];
-                        queue.push([nextStation, newPath, totalFare + totalCost]);
-                    }
-                }
-            }
-            return null;
-        }
-
-        function findMixedRoutes(origin, destination, stations, fareMatrices, seatTypes) {
-            const queue = [[origin, [], 0]];
-            const visited = new Set();
-
-            while (queue.length) {
-                const [currentStation, path, totalFare] = queue.shift();
-
-                if (visited.has(currentStation)) continue;
-                visited.add(currentStation);
-
-                if (currentStation === destination) return [path, totalFare];
-
-                const currentIndex = stations.indexOf(currentStation);
-                for (let i = currentIndex + 1; i < stations.length; i++) {
-                    const nextStation = stations[i];
-                    let bestSegment = null;
-                    for (const seatType of seatTypes) {
-                        const seatInfo = fareMatrices[seatType][currentStation][nextStation];
-                        if (seatInfo && seatInfo.online > 0) {
-                            bestSegment = { seatType, seatInfo };
-                            break;
-                        }
-                    }
-
-                    if (bestSegment) {
-                        const { seatType, seatInfo } = bestSegment;
-                        const base = parseFloat(seatInfo.fare);
-                        const vat = parseFloat(seatInfo.vat_amount || 0);
-                        const charge = 20;
-                        const total = base + vat + charge;
-                        const seg = {
-                            from: currentStation,
-                            to: nextStation,
-                            seatType: seatType,
-                            base: base,
-                            vat: vat,
-                            charge: charge,
-                            total: total,
-                            seats: seatInfo.online + seatInfo.offline,
-                            date: window.stationDates[currentStation]
-                        };
-                        queue.push([nextStation, [...path, seg], totalFare + total]);
-                    }
-                }
-            }
-            return null;
-        }
-
-        function validateAvailabilityForm(event) {
-            event.preventDefault();
-            let isValid = true;
-            let firstEmptyField = null;
-            const validations = [
-                { id: 'ca-origin-station', errorId: 'ca-origin-station-error', inputId: 'ca-origin-station-input', message: 'From station is required' },
-                { id: 'ca-destination-station', errorId: 'ca-destination-station-error', inputId: 'ca-destination-station-input', message: 'To station is required' }
-            ];
-
-            validations.forEach(validation => {
-                const inputField = document.getElementById(validation.id);
-                const textInput = document.getElementById(validation.inputId);
-                const errorField = document.getElementById(validation.errorId);
-                if (inputField.value.trim() === "") {
-                    errorField.textContent = validation.message;
-                    errorField.style.display = "block";
-                    errorField.classList.remove('hide');
-                    errorField.classList.add('show');
-                    textInput.classList.add('error-input');
-                    if (!firstEmptyField) firstEmptyField = textInput;
-                    isValid = false;
-                } else {
-                    errorField.classList.remove('show');
-                    errorField.classList.add('hide');
-                    textInput.classList.remove('error-input');
-                }
-            });
-
-            if (!isValid) {
-                firstEmptyField.focus();
-                return false;
-            }
-
-            const origin = document.getElementById('ca-origin-station').value;
-            const destination = document.getElementById('ca-destination-station').value;
-            const resultsContainer = document.getElementById('ca-route-results');
-
-            if (origin === destination) {
-                resultsContainer.style.display = 'block';
-                resultsContainer.innerHTML = `
-                    <div class="ca-invalid-route-message">
-                        <i class="fas fa-exclamation-circle"></i>
-                        Origin and destination stations cannot be the same.
-                    </div>
-                `;
-                document.querySelector('.ca-check-availability-section').scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-                return false;
-            }
-
-            if (stations.indexOf(origin) >= stations.indexOf(destination)) {
-                resultsContainer.style.display = 'block';
-                resultsContainer.innerHTML = `
-                    <div class="ca-invalid-route-message">
-                        <i class="fas fa-exclamation-circle"></i>
-                        The 'From' station must be earlier than the 'To' station in the train's route.
-                    </div>
-                `;
-                document.querySelector('.ca-check-availability-section').scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-                return false;
-            }
-
-            return true;
-        }
-
-        function displayAvailabilityResults() {
-            const form = document.getElementById('ca-availability-form');
-            const resultsContainer = document.getElementById('ca-route-results');
-            const origin = document.getElementById('ca-origin-station').value;
-            const destination = document.getElementById('ca-destination-station').value;
-
-            resultsContainer.innerHTML = '';
-            resultsContainer.style.display = 'block';
-
-            let hasResults = false;
-            const seatTypes = window.seatTypes;
-            const fareMatrices = window.fareMatrices;
-            const stations = window.stations;
-
-            seatTypes.forEach(seatType => {
-                const hasSeats = Object.keys(fareMatrices[seatType]).some(from =>
-                    Object.values(fareMatrices[seatType][from]).some(info => (info.online + info.offline) > 0)
-                );
-                if (!hasSeats) return;
-
-                const directRoute = fareMatrices[seatType][origin][destination];
-                if (directRoute && directRoute.online > 0) {
-                    const base = parseInt(directRoute.fare);
-                    const vat = parseInt(directRoute.vat_amount || 0);
-                    const charge = 20;
-                    const total = base + vat + charge;
-                    const seats = directRoute.online + directRoute.offline;
-                    const date = window.stationDatesFormatted[origin] || window.date;
-
-                    resultsContainer.innerHTML += `
-                        <div class="ca-route-result-card">
-                            <div class="ca-route-badge direct">Direct Ticket <span class="ca-seat-type-label">${seatType}</span></div>
-                            <div class="ca-route-segment">
-                                <div class="ca-route-segment-header">${origin} to ${destination}</div>
-                                <div class="ca-fare-breakdown">
-                                    <div class="ca-fare-item"><i class="fas fa-coins"></i> <strong>Base Fare:</strong> ${base} <span class="bdt">BDT</span></div>
-                                    ${vat ? `<div class="ca-fare-item"><i class="fas fa-receipt"></i> <strong>VAT:</strong> ${vat} <span class="bdt">BDT</span></div>` : ''}
-                                    <div class="ca-fare-item"><i class="fas fa-money-bill"></i> <strong>Charge:</strong> ${charge} <span class="bdt">BDT</span></div>
-                                    <div class="ca-fare-item ca-fare-item-total"><i class="fas fa-calculator"></i> <strong>Total:</strong> ${total} <span class="bdt">BDT</span></div>
-                                </div>
-                                <div class="ca-ticket-action">
-                                    <div class="ca-ticket-availability"><i class="fas fa-ticket-alt"></i> Available Tickets: <span>${seats}</span></div>
-                                    <a href="https://eticket.railway.gov.bd/booking/train/search?fromcity=${origin}&tocity=${destination}&doj=${date}&class=${seatType}" class="ca-btn-primary buy-link" target="_blank">
-                                        <i class="fas fa-external-link-alt"></i> Buy
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="ca-grand-total"><i class="fas fa-wallet"></i> Grand Total: ${total} BDT</div>
-                        </div>
-                    `;
-                    hasResults = true;
-                } else {
-                    const result = findRoutes(origin, destination, seatType, stations, fareMatrices);
-                    if (result) {
-                        const [segments, totalFare] = result;
-                        const allSameDay = new Set(segments.map(seg => seg.date)).size === 1;
-                        let segmentHtml = '';
-                        segments.forEach(seg => {
-                            segmentHtml += `
-                                <div class="ca-route-segment">
-                                    <div class="ca-route-segment-header">
-                                        ${seg.from} → ${seg.to}
-                                        ${!allSameDay ? `<span class="ca-route-segment-date">${new Date(seg.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}</span>` : ''}
-                                    </div>
-                                    <div class="ca-fare-breakdown">
-                                        <div class="ca-fare-item"><i class="fas fa-coins"></i> <strong>Base Fare:</strong> ${seg.base} <span class="bdt">BDT</span></div>
-                                        ${seg.vat ? `<div class="ca-fare-item"><i class="fas fa-receipt"></i> <strong>VAT:</strong> ${seg.vat} <span class="bdt">BDT</span></div>` : ''}
-                                        <div class="ca-fare-item"><i class="fas fa-money-bill"></i> <strong>Charge:</strong> ${seg.charge} <span class="bdt">BDT</span></div>
-                                        <div class="ca-fare-item ca-fare-item-total"><i class="fas fa-calculator"></i> <strong>Total:</strong> ${seg.total} <span class="bdt">BDT</span></div>
-                                    </div>
-                                    <div class="ca-ticket-action">
-                                        <div class="ca-ticket-availability"><i class="fas fa-ticket-alt"></i> Available Tickets: <span>${seg.seats}</span></div>
-                                        <a href="https://eticket.railway.gov.bd/booking/train/search?fromcity=${seg.from}&tocity=${seg.to}&doj=${new Date(seg.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}&class=${seatType}" class="ca-btn-primary buy-link" target="_blank">
-                                            <i class="fas fa-external-link-alt"></i> Buy
-                                        </a>
-                                    </div>
-                                </div>
-                            `;
-                        });
-
-                        resultsContainer.innerHTML += `
-                            <div class="ca-route-result-card">
-                                <div class="ca-route-badge segmented">Segmented Tickets <span class="ca-seat-type-label">${seatType}</span></div>
-                                ${segmentHtml}
-                                <div class="ca-grand-total"><i class="fas fa-wallet"></i> Grand Total: ${totalFare} BDT</div>
-                            </div>
-                        `;
-                        hasResults = true;
-                    }
-                }
-            });
-
-            if (!hasResults) {
-                const mixedResult = findMixedRoutes(origin, destination, stations, fareMatrices, seatTypes);
-                if (mixedResult) {
-                    const [segments, totalFare] = mixedResult;
-                    const allSameDay = new Set(segments.map(seg => seg.date)).size === 1;
-                    let segmentHtml = '';
-                    segments.forEach(seg => {
-                        segmentHtml += `
-                            <div class="ca-route-segment">
-                                <div class="ca-route-segment-header">
-                                    ${seg.from} → ${seg.to} [${seg.seatType}]
-                                    ${!allSameDay ? `<span class="ca-route-segment-date">starts ${new Date(seg.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}</span>` : ''}
-                                </div>
-                                <div class="ca-fare-breakdown">
-                                    <div class="ca-fare-item"><i class="fas fa-coins"></i> <strong>Base Fare:</strong> ${seg.base} <span class="bdt">BDT</span></div>
-                                    ${seg.vat ? `<div class="ca-fare-item"><i class="fas fa-receipt"></i> <strong>VAT:</strong> ${seg.vat} <span class="bdt">BDT</span></div>` : ''}
-                                    <div class="ca-fare-item"><i class="fas fa-money-bill"></i> <strong>Charge:</strong> ${seg.charge} <span class="bdt">BDT</span></div>
-                                    <div class="ca-fare-item ca-fare-item-total"><i class="fas fa-calculator"></i> <strong>Total:</strong> ${seg.total} <span class="bdt">BDT</span></div>
-                                </div>
-                                <div class="ca-ticket-action">
-                                    <div class="ca-ticket-availability"><i class="fas fa-ticket-alt"></i> Available Tickets: <span>${seg.seats}</span></div>
-                                    <a href="https://eticket.railway.gov.bd/booking/train/search?fromcity=${seg.from}&tocity=${seg.to}&doj=${new Date(seg.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}&class=${seg.seatType}" class="ca-btn-primary buy-link" target="_blank">
-                                        <i class="fas fa-external-link-alt"></i> Buy
-                                    </a>
-                                </div>
-                            </div>
-                        `;
-                    });
-
-                    const seatTypeLabels = [...new Set(segments.map(seg => seg.seatType))].join(', ');
-                    resultsContainer.innerHTML += `
-                        <div class="ca-route-result-card">
-                            <div class="ca-route-badge mixed">Mixed Segmented Tickets <span class="ca-seat-type-label">${seatTypeLabels}</span></div>
-                            ${segmentHtml}
-                            <div class="ca-grand-total"><i class="fas fa-wallet"></i> Grand Total: ${totalFare} BDT</div>
-                        </div>
-                    `;
-                    hasResults = true;
-                }
-            }
-
-            if (!hasResults) {
-                resultsContainer.innerHTML = `
-                    <div class="ca-no-route-message">
-                        <i class="fas fa-exclamation-circle"></i>
-                        No direct, segmented, or mixed-seat-type tickets are available between ${origin} and ${destination}.
-                    </div>
-                `;
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            setupAvailabilityDropdowns();
-            const availabilityForm = document.getElementById('ca-availability-form');
-            if (availabilityForm) {
-                availabilityForm.addEventListener('submit', (event) => {
-                    if (validateAvailabilityForm(event)) {
-                        displayAvailabilityResults();
-                        document.querySelector('.ca-check-availability-section').scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                    }
-                });
-            }
-
-            document.querySelectorAll('.ca-error-message').forEach(function(errorField) {
-                errorField.addEventListener('animationend', function(event) {
-                    if (event.animationName === 'fadeOutScale' && errorField.classList.contains('hide')) {
-                        errorField.style.display = 'none';
-                        errorField.classList.remove('hide');
-                    }
-                });
-            });
-
-            window.stations = {{ stations | tojson }};
-            window.seatTypes = {{ seat_types | tojson }};
-            window.fareMatrices = {{ fare_matrices | tojson }};
-            window.stationDates = {{ station_dates | tojson }};
-            window.stationDatesFormatted = {{ station_dates_formatted | tojson }};
-            window.date = {{ date | tojson }};
-        });
-    </script>
-    <script>
-        (function setupBackToTopButton() {
-            const btn = document.getElementById('backToTopBtn');
-            if (!btn) return;
-
-            let hideTimeout;
-            let lastScrollY = window.scrollY;
-
-            function showButton() {
-                btn.classList.add('visible');
-                clearTimeout(hideTimeout);
-                hideTimeout = setTimeout(() => {
-                    btn.classList.remove('visible');
-                }, 5000);
-            }
-
-            function handleScroll() {
-                const scrollY = window.scrollY;
-                if (scrollY > 300) {
-                    if (scrollY !== lastScrollY) showButton();
-                } else {
-                    btn.classList.remove('visible');
-                }
-                lastScrollY = scrollY;
-            }
-
-            btn.addEventListener('click', () => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            });
-
-            window.addEventListener('scroll', handleScroll);
-        })();
-    </script>
-</body>
-
-</html>
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+// Sample Data (replace with actual data fetched from an API or passed as props)
+const sampleProps = {
+   train_name: "Subarna Express",
+   date: "2025-06-12",
+   has_segmented_dates: true,
+   next_day_str: "June 13, 2025",
+   prev_day_str: "June 11, 2025",
+   stations: [
+       "Dhaka", "Airport", "Feni", "Comilla", "Laksam", "Chittagong"
+   ],
+   days: ["Sat", "Mon", "Tue", "Wed", "Thu", "Fri"], // Sunday is off for Subarna
+   routes: [
+       {
+           city: "Dhaka",
+           arrival_time: null,
+           departure_time: "07:00 BST",
+           halt: "---",
+           duration: "---",
+           display_date: null
+       },
+       {
+           city: "Airport",
+           arrival_time: "07:15 BST",
+           departure_time: "07:18 BST",
+           halt: "3",
+           duration: "0:15",
+           display_date: null
+       },
+       {
+           city: "Feni",
+           arrival_time: "10:30 BST",
+           departure_time: "10:35 BST",
+           halt: "5",
+           duration: "3:30",
+           display_date: null
+       },
+       {
+           city: "Comilla",
+           arrival_time: "11:30 BST",
+           departure_time: "11:35 BST",
+           halt: "5",
+           duration: "4:30",
+           display_date: null
+       },
+       {
+           city: "Laksam",
+           arrival_time: "12:00 BST",
+           departure_time: "12:05 BST",
+           halt: "5",
+           duration: "5:00",
+           display_date: null
+       },
+       {
+           city: "Chittagong",
+           arrival_time: "13:00 BST",
+           departure_time: null,
+           halt: "---",
+           duration: "6:00",
+           display_date: null
+       }
+   ],
+   total_duration: "06:00",
+   seat_types: ["SNIGDHA", "AC_CHAIR", "F_CHAIR"],
+   has_data_map: {
+       "SNIGDHA": true,
+       "AC_CHAIR": true,
+       "F_CHAIR": true
+   },
+   fare_matrices: {
+       "SNIGDHA": {
+           "Dhaka": {
+               "Airport": { online: 5, offline: 0, fare: 100, vat_amount: 10 },
+               "Feni": { online: 8, offline: 2, fare: 500, vat_amount: 50 },
+               "Comilla": { online: 12, offline: 3, fare: 400, vat_amount: 40 },
+               "Laksam": { online: 15, offline: 4, fare: 450, vat_amount: 45 },
+               "Chittagong": { online: 20, offline: 5, fare: 800, vat_amount: 80 }
+           },
+           "Airport": {
+               "Feni": { online: 6, offline: 1, fare: 450, vat_amount: 45 },
+               "Comilla": { online: 10, offline: 2, fare: 350, vat_amount: 35 },
+               "Laksam": { online: 13, offline: 3, fare: 400, vat_amount: 40 },
+               "Chittagong": { online: 15, offline: 2, fare: 750, vat_amount: 75 }
+           },
+           "Feni": {
+               "Comilla": { online: 7, offline: 1, fare: 100, vat_amount: 10 },
+               "Laksam": { online: 8, offline: 2, fare: 150, vat_amount: 15 },
+               "Chittagong": { online: 7, offline: 1, fare: 300, vat_amount: 30 }
+           },
+           "Comilla": {
+               "Laksam": { online: 9, offline: 1, fare: 80, vat_amount: 8 },
+               "Chittagong": { online: 8, offline: 1, fare: 250, vat_amount: 25 }
+           },
+           "Laksam": {
+               "Chittagong": { online: 5, offline: 0, fare: 200, vat_amount: 20 }
+           }
+       },
+       "AC_CHAIR": {
+           "Dhaka": {
+               "Airport": { online: 3, offline: 0, fare: 80, vat_amount: 8 },
+               "Feni": { online: 5, offline: 1, fare: 400, vat_amount: 40 },
+               "Comilla": { online: 8, offline: 2, fare: 320, vat_amount: 32 },
+               "Laksam": { online: 10, offline: 3, fare: 360, vat_amount: 36 },
+               "Chittagong": { online: 10, offline: 1, fare: 650, vat_amount: 65 }
+           },
+           "Airport": {
+               "Feni": { online: 4, offline: 0, fare: 350, vat_amount: 35 },
+               "Comilla": { online: 7, offline: 1, fare: 280, vat_amount: 28 },
+               "Laksam": { online: 9, offline: 2, fare: 300, vat_amount: 30 },
+               "Chittagong": { online: 8, offline: 0, fare: 600, vat_amount: 60 }
+           },
+           "Feni": {
+               "Comilla": { online: 6, offline: 0, fare: 80, vat_amount: 8 },
+               "Laksam": { online: 7, offline: 1, fare: 120, vat_amount: 12 },
+               "Chittagong": { online: 6, offline: 0, fare: 250, vat_amount: 25 }
+           },
+           "Comilla": {
+               "Laksam": { online: 8, offline: 0, fare: 60, vat_amount: 6 },
+               "Chittagong": { online: 7, offline: 0, fare: 200, vat_amount: 20 }
+           },
+           "Laksam": {
+               "Chittagong": { online: 4, offline: 0, fare: 180, vat_amount: 18 }
+           }
+       },
+       "F_CHAIR": {
+           "Dhaka": {
+               "Airport": { online: 10, offline: 0, fare: 50, vat_amount: 5 },
+               "Feni": { online: 15, offline: 5, fare: 250, vat_amount: 25 },
+               "Comilla": { online: 20, offline: 5, fare: 200, vat_amount: 20 },
+               "Laksam": { online: 25, offline: 8, fare: 220, vat_amount: 22 },
+               "Chittagong": { online: 30, offline: 10, fare: 450, vat_amount: 45 }
+           },
+           "Airport": {
+               "Feni": { online: 12, offline: 3, fare: 220, vat_amount: 22 },
+               "Comilla": { online: 18, offline: 4, fare: 180, vat_amount: 18 },
+               "Laksam": { online: 22, offline: 6, fare: 200, vat_amount: 20 },
+               "Chittagong": { online: 25, offline: 8, fare: 400, vat_amount: 40 }
+           },
+           "Feni": {
+               "Comilla": { online: 10, offline: 2, fare: 60, vat_amount: 6 },
+               "Laksam": { online: 12, offline: 3, fare: 100, vat_amount: 10 },
+               "Chittagong": { online: 10, offline: 2, fare: 180, vat_amount: 18 }
+           },
+           "Comilla": {
+               "Laksam": { online: 15, offline: 4, fare: 40, vat_amount: 4 },
+               "Chittagong": { online: 12, offline: 3, fare: 150, vat_amount: 15 }
+           },
+           "Laksam": {
+               "Chittagong": { online: 8, offline: 1, fare: 130, vat_amount: 13 }
+           }
+       }
+   },
+   station_dates: {
+       "Dhaka": "2025-06-12",
+       "Airport": "2025-06-12",
+       "Feni": "2025-06-12",
+       "Comilla": "2025-06-12",
+       "Laksam": "2025-06-12",
+       "Chittagong": "2025-06-12"
+   },
+   station_dates_formatted: {
+       "Dhaka": "12-Jun-2025",
+       "Airport": "12-Jun-2025",
+       "Feni": "12-Jun-2025",
+       "Comilla": "12-Jun-2025",
+       "Laksam": "12-Jun-2025",
+       "Chittagong": "12-Jun-2025"
+   },
+   // New sample props for navigation
+   initial_from_station: "Dhaka",
+   initial_to_station: "Chittagong",
+   initial_seat_class: "SNIGDHA"
+};
+
+const App = ({
+   train_name = sampleProps.train_name,
+   date = sampleProps.date, // This is the date string in YYYY-MM-DD
+   has_segmented_dates = sampleProps.has_segmented_dates,
+   next_day_str = sampleProps.next_day_str,
+   prev_day_str = sampleProps.prev_day_str,
+   stations = sampleProps.stations,
+   days = sampleProps.days,
+   routes = sampleProps.routes,
+   total_duration = sampleProps.total_duration,
+   seat_types = sampleProps.seat_types,
+   has_data_map = sampleProps.has_data_map,
+   fare_matrices = sampleProps.fare_matrices,
+   station_dates = sampleProps.station_dates,
+   station_dates_formatted = sampleProps.station_dates_formatted,
+   // New props for date navigation
+   initial_from_station = sampleProps.initial_from_station,
+   initial_to_station = sampleProps.initial_to_station,
+   initial_seat_class = sampleProps.initial_seat_class,
+}) => {
+   const [flyoutMessage, setFlyoutMessage] = useState('');
+   const [showFlyout, setShowFlyout] = useState(false);
+   const [originStation, setOriginStation] = useState('');
+   const [destinationStation, setDestinationStation] = useState('');
+   const [originStationInput, setOriginStationInput] = useState('');
+   const [destinationStationInput, setDestinationStationInput] = useState('');
+   const [showOriginDropdown, setShowOriginDropdown] = useState(false);
+   const [showDestinationDropdown, setShowDestinationDropdown] = useState(false);
+   const [availabilityResults, setAvailabilityResults] = useState(null);
+   const [isRouteExpanded, setIsRouteExpanded] = useState(false);
+
+   const originDropdownRef = useRef(null);
+   const destinationDropdownRef = useRef(null);
+   const backToTopBtnRef = useRef(null);
+   const routeBodyRef = useRef(null);
+
+   // Initialize availability form inputs from props
+   useEffect(() => {
+       if (initial_from_station) {
+           setOriginStation(initial_from_station);
+           setOriginStationInput(initial_from_station);
+       }
+       if (initial_to_station) {
+           setDestinationStation(initial_to_station);
+           setDestinationStationInput(initial_to_station);
+       }
+   }, [initial_from_station, initial_to_station]);
+
+   // --- Utility Functions ---
+   const formatDuration = (duration) => {
+       if (!duration || duration === '---') return '———';
+       const [hours, minutes] = duration.split(':').map(Number);
+       if (hours > 0 && minutes > 0) return `${hours} h ${minutes} min`;
+       if (hours > 0) return `${hours} h`;
+       if (minutes > 0) return `${minutes} min`;
+       return '———';
+   };
+
+   const formatDateForLink = (dateString) => {
+       if (!dateString) return '';
+       const d = new Date(dateString);
+       // Ensure date is formatted correctly for eticket.railway.gov.bd
+       // Example: "12-Jun-2025"
+       const options = { day: '2-digit', month: 'short', year: 'numeric' };
+       return d.toLocaleDateString('en-GB', options).replace(/ /g, '-');
+   };
+
+   const getFormattedDate = (dateObj) => {
+       const year = dateObj.getFullYear();
+       const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+       const day = dateObj.getDate().toString().padStart(2, '0');
+       return `${year}-${month}-${day}`;
+   };
+
+   // --- Date Navigation Handlers ---
+   const handleDateNavigation = (deltaDays) => {
+       const currentDateObj = new Date(date);
+       currentDateObj.setDate(currentDateObj.getDate() + deltaDays);
+       const newDate = getFormattedDate(currentDateObj);
+
+       // Construct the new URL. In a real application, this would likely be handled by a router
+       // or by making an API call to fetch data for the new date.
+       // For this example, we simulate a full page reload with new query parameters.
+       const baseUrl = window.location.origin + window.location.pathname; // Assumes matrix is at root or fixed path
+       const queryParams = new URLSearchParams();
+       queryParams.set('date', newDate);
+       queryParams.set('from', initial_from_station);
+       queryParams.set('to', initial_to_station);
+       queryParams.set('class', initial_seat_class);
+
+       window.location.href = `${baseUrl}?${queryParams.toString()}`;
+   };
+
+   // --- Availability Form Logic ---
+
+   // BFS to find direct or segmented routes
+   const findRoutes = useCallback((origin, destination, seatType, stations, fareMatrices) => {
+       const queue = [[origin, [], 0]]; // [currentStation, path, totalFare]
+       const visited = new Set();
+
+       while (queue.length > 0) {
+           const [currentStation, path, totalFare] = queue.shift();
+
+           if (visited.has(currentStation)) continue;
+           visited.add(currentStation);
+
+           if (currentStation === destination) return [path, totalFare];
+
+           const currentIndex = stations.indexOf(currentStation);
+           for (let i = currentIndex + 1; i < stations.length; i++) {
+               const nextStation = stations[i];
+               if (fareMatrices[seatType] && fareMatrices[seatType][currentStation] && fareMatrices[seatType][currentStation][nextStation]) {
+                   const seatInfo = fareMatrices[seatType][currentStation][nextStation];
+                   if (seatInfo && (seatInfo.online + seatInfo.offline) > 0) {
+                       const baseFare = parseFloat(seatInfo.fare);
+                       const vatAmount = parseFloat(seatInfo.vat_amount || 0);
+                       const charge = 20; // Example charge
+                       const totalCost = baseFare + vatAmount + charge;
+                       const newPath = [...path, {
+                           from: currentStation,
+                           to: nextStation,
+                           base: baseFare,
+                           vat: vatAmount,
+                           charge: charge,
+                           total: totalCost,
+                           seats: seatInfo.online + seatInfo.offline,
+                           date: station_dates[currentStation] || date
+                       }];
+                       queue.push([nextStation, newPath, totalFare + totalCost]);
+                   }
+               }
+           }
+       }
+       return null;
+   }, [stations, fare_matrices, station_dates, date]);
+
+   // BFS to find mixed-seat-type routes
+   const findMixedRoutes = useCallback((origin, destination, stations, fareMatrices, seatTypes) => {
+       const queue = [[origin, [], 0]];
+       const visited = new Set();
+
+       while (queue.length > 0) {
+           const [currentStation, path, totalFare] = queue.shift();
+
+           if (visited.has(currentStation)) continue;
+           visited.add(currentStation);
+
+           if (currentStation === destination) return [path, totalFare];
+
+           const currentIndex = stations.indexOf(currentStation);
+           for (let i = currentIndex + 1; i < stations.length; i++) {
+               const nextStation = stations[i];
+               let bestSegment = null;
+               for (const seatType of seatTypes) {
+                   if (fareMatrices[seatType] && fareMatrices[seatType][currentStation] && fareMatrices[seatType][currentStation][nextStation]) {
+                       const seatInfo = fareMatrices[seatType][currentStation][nextStation];
+                       if (seatInfo && (seatInfo.online + seatInfo.offline) > 0) {
+                           bestSegment = { seatType, seatInfo };
+                           break; // Found an available seat for this segment, take the first one
+                       }
+                   }
+               }
+
+               if (bestSegment) {
+                   const { seatType, seatInfo } = bestSegment;
+                   const base = parseFloat(seatInfo.fare);
+                   const vat = parseFloat(seatInfo.vat_amount || 0);
+                   const charge = 20;
+                   const total = base + vat + charge;
+                   const seg = {
+                       from: currentStation,
+                       to: nextStation,
+                       seatType: seatType,
+                       base: base,
+                       vat: vat,
+                       charge: charge,
+                       total: total,
+                       seats: seatInfo.online + seatInfo.offline,
+                       date: station_dates[currentStation] || date
+                   };
+                   queue.push([nextStation, [...path, seg], totalFare + total]);
+               }
+           }
+       }
+       return null;
+   }, [stations, fare_matrices, seat_types, station_dates, date]);
+
+
+   const validateAvailabilityForm = (event) => {
+       event.preventDefault();
+       let isValid = true;
+       let firstEmptyField = null;
+
+       const validations = [
+           { value: originStation, errorId: 'ca-origin-station-error', inputId: 'ca-origin-station-input', message: 'From station is required' },
+           { value: destinationStation, errorId: 'ca-destination-station-error', inputId: 'ca-destination-station-input', message: 'To station is required' }
+       ];
+
+       validations.forEach(validation => {
+           const errorField = document.getElementById(validation.errorId);
+           const textInput = document.getElementById(validation.inputId);
+           if (validation.value.trim() === "") {
+               errorField.textContent = validation.message;
+               errorField.style.display = "block";
+               textInput.classList.add('border-red-500', 'focus:ring-red-500');
+               if (!firstEmptyField) firstEmptyField = textInput;
+               isValid = false;
+           } else {
+               errorField.style.display = "none";
+               textInput.classList.remove('border-red-500', 'focus:ring-red-500');
+           }
+       });
+
+       if (!isValid) {
+           if (firstEmptyField) firstEmptyField.focus();
+           return false;
+       }
+
+       if (originStation === destinationStation) {
+           setAvailabilityResults(
+               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md flex items-center shadow-sm">
+                   <i className="fas fa-exclamation-circle mr-3 text-lg"></i>
+                   Origin and destination stations cannot be the same.
+               </div>
+           );
+           return false;
+       }
+
+       if (stations.indexOf(originStation) >= stations.indexOf(destinationStation)) {
+           setAvailabilityResults(
+               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md flex items-center shadow-sm">
+                   <i className="fas fa-exclamation-circle mr-3 text-lg"></i>
+                   The 'From' station must be earlier than the 'To' station in the train's route.
+               </div>
+           );
+           return false;
+       }
+       return true;
+   };
+
+   const displayAvailabilityResults = useCallback(() => {
+       const results = [];
+       let hasResults = false;
+
+       seat_types.forEach(seatType => {
+           // Check if there's any data for this seat type before proceeding
+           const hasSeats = Object.keys(fare_matrices[seatType] || {}).some(from =>
+               Object.values(fare_matrices[seatType][from] || {}).some(info => (info.online + info.offline) > 0)
+           );
+           if (!hasSeats) return;
+
+           const directRouteInfo = fare_matrices[seatType]?.[originStation]?.[destinationStation];
+           if (directRouteInfo && (directRouteInfo.online + directRouteInfo.offline) > 0) {
+               const base = parseInt(directRouteInfo.fare);
+               const vat = parseInt(directRouteInfo.vat_amount || 0);
+               const charge = 20;
+               const total = base + vat + charge;
+               const seats = directRouteInfo.online + directRouteInfo.offline;
+               const doj = station_dates_formatted[originStation] || date;
+
+               results.push(
+                   <div key={`direct-${seatType}`} className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 mb-6 border border-gray-200">
+                       <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+                           <span className="bg-blue-600 text-white text-sm font-semibold px-3 py-1 rounded-full flex items-center">
+                               <i className="fas fa-route mr-2"></i> Direct Ticket <span className="ml-2 bg-blue-800 px-2 py-0.5 rounded-full text-xs">{seatType}</span>
+                           </span>
+                       </div>
+                       <div className="space-y-3">
+                           <div className="flex items-center text-gray-700 text-lg font-medium">
+                               <i className="fas fa-map-marker-alt text-gray-500 mr-2"></i> {originStation} <i className="fas fa-long-arrow-alt-right mx-2 text-gray-400"></i> {destinationStation}
+                           </div>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                               <div className="flex items-center"><i className="fas fa-coins mr-2 text-yellow-600"></i> <strong>Base Fare:</strong> {base} <span className="ml-1 text-gray-500">BDT</span></div>
+                               {vat > 0 && <div className="flex items-center"><i className="fas fa-receipt mr-2 text-purple-600"></i> <strong>VAT:</strong> {vat} <span className="ml-1 text-gray-500">BDT</span></div>}
+                               <div className="flex items-center"><i className="fas fa-money-bill-wave mr-2 text-green-600"></i> <strong>Charge:</strong> {charge} <span className="ml-1 text-gray-500">BDT</span></div>
+                               <div className="flex items-center font-bold text-gray-800"><i className="fas fa-calculator mr-2 text-red-600"></i> <strong>Total Fare:</strong> {total} <span className="ml-1 text-gray-500">BDT</span></div>
+                           </div>
+                           <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-gray-200 mt-4">
+                               <div className="flex items-center text-lg font-semibold text-teal-700 mb-3 sm:mb-0">
+                                   <i className="fas fa-ticket-alt mr-2"></i> Available Tickets: <span className="ml-2 text-2xl text-teal-800">{seats}</span>
+                               </div>
+                               <a href={`https://eticket.railway.gov.bd/booking/train/search?fromcity=${originStation}&tocity=${destinationStation}&doj=${doj}&class=${seatType}`}
+                                   className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-md shadow-lg hover:shadow-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 ease-in-out transform hover:scale-105"
+                                   target="_blank" rel="noopener noreferrer">
+                                   <i className="fas fa-external-link-alt mr-3"></i> Buy Now
+                               </a>
+                           </div>
+                       </div>
+                   </div>
+               );
+               hasResults = true;
+           } else {
+               const result = findRoutes(originStation, destinationStation, seatType, stations, fare_matrices);
+               if (result) {
+                   const [segments, totalFare] = result;
+                   const allSameDay = new Set(segments.map(seg => seg.date)).size === 1;
+
+                   results.push(
+                       <div key={`segmented-${seatType}`} className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 mb-6 border border-gray-200">
+                           <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+                               <span className="bg-purple-600 text-white text-sm font-semibold px-3 py-1 rounded-full flex items-center">
+                                   <i className="fas fa-layer-group mr-2"></i> Segmented Tickets <span className="ml-2 bg-purple-800 px-2 py-0.5 rounded-full text-xs">{seatType}</span>
+                               </span>
+                           </div>
+                           {segments.map((seg, index) => (
+                               <div key={index} className="bg-gray-50 p-4 rounded-md mb-3 last:mb-0 border border-gray-100 shadow-sm">
+                                   <div className="flex items-center text-gray-700 font-medium mb-2">
+                                       <i className="fas fa-route mr-2 text-blue-500"></i> {seg.from} <i className="fas fa-long-arrow-alt-right mx-2 text-gray-400"></i> {seg.to}
+                                       {!allSameDay && (
+                                           <span className="ml-auto text-sm text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
+                                               starts {formatDateForLink(seg.date)}
+                                           </span>
+                                       )}
+                                   </div>
+                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                                       <div className="flex items-center"><i className="fas fa-coins mr-2 text-yellow-600"></i> <strong>Base Fare:</strong> {seg.base} <span className="ml-1 text-gray-500">BDT</span></div>
+                                       {seg.vat > 0 && <div className="flex items-center"><i className="fas fa-receipt mr-2 text-purple-600"></i> <strong>VAT:</strong> {seg.vat} <span className="ml-1 text-gray-500">BDT</span></div>}
+                                       <div className="flex items-center"><i className="fas fa-money-bill-wave mr-2 text-green-600"></i> <strong>Charge:</strong> {seg.charge} <span className="ml-1 text-gray-500">BDT</span></div>
+                                       <div className="flex items-center font-bold text-gray-800"><i className="fas fa-calculator mr-2 text-red-600"></i> <strong>Total:</strong> {seg.total} <span className="ml-1 text-gray-500">BDT</span></div>
+                                   </div>
+                                   <div className="flex flex-col sm:flex-row items-center justify-between pt-3 border-t border-gray-100 mt-3">
+                                       <div className="flex items-center text-base font-semibold text-teal-700 mb-2 sm:mb-0">
+                                           <i className="fas fa-ticket-alt mr-2"></i> Tickets: <span className="ml-1 text-xl text-teal-800">{seg.seats}</span>
+                                       </div>
+                                       <a href={`https://eticket.railway.gov.bd/booking/train/search?fromcity=${seg.from}&tocity=${seg.to}&doj=${formatDateForLink(seg.date)}&class=${seatType}`}
+                                           className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm font-semibold rounded-md shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 ease-in-out transform hover:scale-105"
+                                           target="_blank" rel="noopener noreferrer">
+                                           <i className="fas fa-external-link-alt mr-2"></i> Buy Segment
+                                       </a>
+                                   </div>
+                               </div>
+                           ))}
+                           <div className="text-right text-2xl font-bold text-gray-800 pt-4 border-t border-gray-300 mt-4">
+                               <i className="fas fa-wallet mr-2 text-orange-600"></i> Grand Total: {totalFare} <span className="text-gray-500">BDT</span>
+                           </div>
+                       </div>
+                   );
+                   hasResults = true;
+               }
+           }
+       });
+
+       // Try mixed routes if no direct or single-seat-type segmented routes found
+       if (!hasResults) {
+           const mixedResult = findMixedRoutes(originStation, destinationStation, stations, fare_matrices, seat_types);
+           if (mixedResult) {
+               const [segments, totalFare] = mixedResult;
+               const allSameDay = new Set(segments.map(seg => seg.date)).size === 1;
+               const seatTypeLabels = [...new Set(segments.map(seg => seg.seatType))].join(', ');
+
+               results.push(
+                   <div key="mixed-segmented" className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 mb-6 border border-gray-200">
+                       <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+                           <span className="bg-indigo-600 text-white text-sm font-semibold px-3 py-1 rounded-full flex items-center">
+                               <i className="fas fa-random mr-2"></i> Mixed Segmented Tickets <span className="ml-2 bg-indigo-800 px-2 py-0.5 rounded-full text-xs">{seatTypeLabels}</span>
+                           </span>
+                       </div>
+                       {segments.map((seg, index) => (
+                           <div key={index} className="bg-gray-50 p-4 rounded-md mb-3 last:mb-0 border border-gray-100 shadow-sm">
+                               <div className="flex items-center text-gray-700 font-medium mb-2">
+                                   <i className="fas fa-route mr-2 text-blue-500"></i> {seg.from} <i className="fas fa-long-arrow-alt-right mx-2 text-gray-400"></i> {seg.to} [<span className="font-semibold text-blue-700">{seg.seatType}</span>]
+                                   {!allSameDay && (
+                                       <span className="ml-auto text-sm text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
+                                           starts {formatDateForLink(seg.date)}
+                                       </span>
+                                   )}
+                               </div>
+                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                                   <div className="flex items-center"><i className="fas fa-coins mr-2 text-yellow-600"></i> <strong>Base Fare:</strong> {seg.base} <span className="ml-1 text-gray-500">BDT</span></div>
+                                   {seg.vat > 0 && <div className="flex items-center"><i className="fas fa-receipt mr-2 text-purple-600"></i> <strong>VAT:</strong> {seg.vat} <span className="ml-1 text-gray-500">BDT</span></div>}
+                                   <div className="flex items-center"><i className="fas fa-money-bill-wave mr-2 text-green-600"></i> <strong>Charge:</strong> {seg.charge} <span className="ml-1 text-gray-500">BDT</span></div>
+                                   <div className="flex items-center font-bold text-gray-800"><i className="fas fa-calculator mr-2 text-red-600"></i> <strong>Total:</strong> {seg.total} <span className="ml-1 text-gray-500">BDT</span></div>
+                               </div>
+                               <div className="flex flex-col sm:flex-row items-center justify-between pt-3 border-t border-gray-100 mt-3">
+                                   <div className="flex items-center text-base font-semibold text-teal-700 mb-2 sm:mb-0">
+                                       <i className="fas fa-ticket-alt mr-2"></i> Tickets: <span className="ml-1 text-xl text-teal-800">{seg.seats}</span>
+                                   </div>
+                                   <a href={`https://eticket.railway.gov.bd/booking/train/search?fromcity=${seg.from}&tocity=${seg.to}&doj=${formatDateForLink(seg.date)}&class=${seg.seatType}`}
+                                       className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm font-semibold rounded-md shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 ease-in-out transform hover:scale-105"
+                                       target="_blank" rel="noopener noreferrer">
+                                       <i className="fas fa-external-link-alt mr-2"></i> Buy Segment
+                                   </a>
+                               </div>
+                           </div>
+                       ))}
+                       <div className="text-right text-2xl font-bold text-gray-800 pt-4 border-t border-gray-300 mt-4">
+                           <i className="fas fa-wallet mr-2 text-orange-600"></i> Grand Total: {totalFare} <span className="text-gray-500">BDT</span>
+                       </div>
+                   </div>
+               );
+               hasResults = true;
+           }
+       }
+
+
+       if (!hasResults) {
+           setAvailabilityResults(
+               <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-md flex items-center shadow-sm">
+                   <i className="fas fa-exclamation-circle mr-3 text-lg"></i>
+                   No direct, segmented, or mixed-seat-type tickets are available between {originStation} and {destinationStation}.
+               </div>
+           );
+       } else {
+           setAvailabilityResults(results);
+       }
+   }, [originStation, destinationStation, seat_types, stations, fare_matrices, date, findRoutes, findMixedRoutes, station_dates_formatted, station_dates]);
+
+   const handleFormSubmit = (event) => {
+       if (validateAvailabilityForm(event)) {
+           displayAvailabilityResults();
+           document.querySelector('.ca-check-availability-section').scrollIntoView({
+               behavior: 'smooth',
+               block: 'start'
+           });
+       }
+   };
+
+
+   // --- Effects ---
+
+   // Scrollable tables (horizontal/vertical drag)
+   useEffect(() => {
+       const tables = document.querySelectorAll(".table-responsive");
+
+       tables.forEach(table => {
+           let isDown = false;
+           let startX;
+           let startY;
+           let scrollLeft;
+           let scrollTop;
+
+           const handleMouseDown = (e) => {
+               isDown = true;
+               table.classList.add("cursor-grabbing");
+               startX = e.pageX - table.offsetLeft;
+               startY = e.pageY - table.offsetTop;
+               scrollLeft = table.scrollLeft;
+               scrollTop = table.scrollTop;
+               e.preventDefault();
+           };
+
+           const handleMouseLeave = () => {
+               isDown = false;
+               table.classList.remove("cursor-grabbing");
+           };
+
+           const handleMouseUp = () => {
+               isDown = false;
+               table.classList.remove("cursor-grabbing");
+           };
+
+           const handleMouseMove = (e) => {
+               if (!isDown) return;
+               e.preventDefault();
+               const x = e.pageX - table.offsetLeft;
+               const y = e.pageY - table.offsetTop;
+               const walkX = (x - startX);
+               const walkY = (y - startY);
+               table.scrollLeft = scrollLeft - walkX;
+               table.scrollTop = scrollTop - walkY;
+           };
+
+           table.addEventListener("mousedown", handleMouseDown);
+           table.addEventListener("mouseleave", handleMouseLeave);
+           table.addEventListener("mouseup", handleMouseUp);
+           table.addEventListener("mousemove", handleMouseMove);
+
+           return () => {
+               table.removeEventListener("mousedown", handleMouseDown);
+               table.removeEventListener("mouseleave", handleMouseLeave);
+               table.removeEventListener("mouseup", handleMouseUp);
+               table.removeEventListener("mousemove", handleMouseMove);
+           };
+       });
+   }, []);
+
+   // Route Collapse (Details element)
+   useEffect(() => {
+       const details = document.querySelector(".route-collapse");
+       if (!details || !routeBodyRef.current) return;
+
+       const routeBody = routeBodyRef.current;
+       const updateContentHeight = () => {
+           routeBody.style.height = 'auto'; // Temporarily set to auto to get scrollHeight
+           const height = routeBody.scrollHeight;
+           routeBody.style.height = isRouteExpanded ? `${height}px` : '0px';
+           return height;
+       };
+
+       const handleTransitionEnd = () => {
+           if (isRouteExpanded) {
+               routeBody.style.height = 'auto'; // Remove explicit height after animation
+           }
+       };
+
+       routeBody.addEventListener('transitionend', handleTransitionEnd);
+
+       // Initial height set if expanded by default
+       if (isRouteExpanded) {
+           requestAnimationFrame(() => {
+               routeBody.style.height = `${updateContentHeight()}px`;
+               routeBody.style.opacity = '1';
+           });
+       }
+
+       const handleResize = () => {
+           if (isRouteExpanded) {
+               updateContentHeight();
+           }
+       };
+
+       window.addEventListener('resize', handleResize);
+
+       return () => {
+           window.removeEventListener('resize', handleResize);
+           routeBody.removeEventListener('transitionend', handleTransitionEnd);
+       };
+   }, [isRouteExpanded]);
+
+   // Back to Top Button
+   useEffect(() => {
+       const btn = backToTopBtnRef.current;
+       if (!btn) return;
+
+       let hideTimeout;
+       let lastScrollY = window.scrollY;
+
+       function showButton() {
+           btn.classList.add('opacity-100', 'translate-y-0');
+           clearTimeout(hideTimeout);
+           hideTimeout = setTimeout(() => {
+               btn.classList.remove('opacity-100', 'translate-y-0');
+           }, 5000);
+       }
+
+       function handleScroll() {
+           const scrollY = window.scrollY;
+           if (scrollY > 300) {
+               if (scrollY !== lastScrollY) showButton();
+           } else {
+               btn.classList.remove('opacity-100', 'translate-y-0');
+           }
+           lastScrollY = scrollY;
+       }
+
+       btn.addEventListener('click', () => {
+           window.scrollTo({ top: 0, behavior: 'smooth' });
+       });
+
+       window.addEventListener('scroll', handleScroll);
+
+       return () => {
+           btn.removeEventListener('click', () => {
+               window.scrollTo({ top: 0, behavior: 'smooth' });
+           });
+           window.removeEventListener('scroll', handleScroll);
+       };
+   }, []);
+
+   // Dropdown management
+   useEffect(() => {
+       const handleClickOutside = (event) => {
+           if (originDropdownRef.current && !originDropdownRef.current.contains(event.target)) {
+               setShowOriginDropdown(false);
+           }
+           if (destinationDropdownRef.current && !destinationDropdownRef.current.contains(event.target)) {
+               setShowDestinationDropdown(false);
+           }
+       };
+       document.addEventListener('mousedown', handleClickOutside);
+       return () => {
+           document.removeEventListener('mousedown', handleClickOutside);
+       };
+   }, []);
+
+   // Auto-redirect or show flyout for session timeout (simulated)
+   useEffect(() => {
+       const redirectTimer = setTimeout(() => {
+           setFlyoutMessage("Your session is about to expire. Please refresh the page to continue.");
+           setShowFlyout(true);
+           // In a real app, you might redirect after a shorter interval or show a logout button
+           // window.location.href = '/'; // Or handle session refresh
+       }, 290000); // 290 seconds, just before 300 seconds
+
+       return () => clearTimeout(redirectTimer);
+   }, []);
+
+
+   const handleOriginSelect = (value) => {
+       setOriginStation(value);
+       setOriginStationInput(value);
+       setShowOriginDropdown(false);
+       // Clear error message if set
+       document.getElementById('ca-origin-station-input').classList.remove('border-red-500', 'focus:ring-red-500');
+       document.getElementById('ca-origin-station-error').style.display = 'none';
+
+       // Update destination dropdown options if open
+       if (showDestinationDropdown) {
+           // Force re-render of destination options to filter out the selected origin
+           setShowDestinationDropdown(false); // Close first
+           setTimeout(() => setShowDestinationDropdown(true), 0); // Re-open
+       }
+   };
+
+   const handleDestinationSelect = (value) => {
+       setDestinationStation(value);
+       setDestinationStationInput(value);
+       setShowDestinationDropdown(false);
+       // Clear error message if set
+       document.getElementById('ca-destination-station-input').classList.remove('border-red-500', 'focus:ring-red-500');
+       document.getElementById('ca-destination-station-error').style.display = 'none';
+
+       // Update origin dropdown options if open
+       if (showOriginDropdown) {
+           // Force re-render of origin options to filter out the selected destination
+           setShowOriginDropdown(false); // Close first
+           setTimeout(() => setShowOriginDropdown(true), 0); // Re-open
+       }
+   };
+
+   const handleSwapStations = () => {
+       setOriginStation(destinationStation);
+       setOriginStationInput(destinationStation);
+       setDestinationStation(originStation);
+       setDestinationStationInput(originStation);
+       setAvailabilityResults(null); // Clear previous results
+   };
+
+   return (
+       <div className="min-h-screen bg-gray-100 font-inter antialiased text-gray-800">
+           {/* Flyout Notification */}
+           <div
+               id="flyoutNotification"
+               className={`fixed top-4 right-4 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-xl z-50 transition-all duration-500 transform ${showFlyout ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
+           >
+               <span id="flyoutMessage">{flyoutMessage}</span>
+               <i
+                   className="fas fa-times ml-4 cursor-pointer hover:text-gray-200"
+                   onClick={() => setShowFlyout(false)}
+               ></i>
+           </div>
+
+           {/* NoScript Warning */}
+           <noscript>
+               <div className="flex items-center justify-center p-6 bg-red-100 text-red-800 rounded-lg shadow-md max-w-xl mx-auto my-8 border border-red-300">
+                   <div className="text-center">
+                       <h2 className="text-2xl font-bold mb-3 flex items-center justify-center"><i className="fas fa-exclamation-circle text-red-500 mr-2"></i> Please Enable JavaScript</h2>
+                       <p className="mb-4 text-gray-700">This website requires JavaScript to function properly. Enable it in your browser settings to access full functionality and check train seat availability.</p>
+                       <div className="text-sm bg-red-50 p-3 rounded-md border border-red-200 text-left">
+                           <strong className="text-red-700 block mb-1">How to enable:</strong>
+                           <p className="text-gray-600">Go to your browser settings > Privacy/Security > Enable JavaScript. Refresh the page after enabling.</p>
+                       </div>
+                   </div>
+               </div>
+           </noscript>
+
+           <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 bg-white rounded-lg shadow-xl my-8">
+               <h1 className="text-3xl sm:text-4xl font-extrabold text-center text-gray-900 mb-6 flex items-center justify-center">
+                   <i className="fas fa-th-list text-blue-600 mr-3"></i> Seat Matrix for <span className="text-blue-700">{train_name}</span>
+               </h1>
+
+               <div className="flex justify-center mb-8">
+                   <a href="/" className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 ease-in-out transform hover:scale-105">
+                       <i className="fas fa-arrow-left mr-3"></i> Back to Search
+                   </a>
+               </div>
+
+               {/* Date Navigation Buttons */}
+               <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-8">
+                   <button
+                       onClick={() => handleDateNavigation(-1)}
+                       className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-teal-600 hover:to-cyan-700 transition-all duration-300 ease-in-out transform hover:scale-105"
+                   >
+                       <i className="fas fa-chevron-left mr-3"></i> Previous Day
+                   </button>
+
+                   <div className="date-header text-center bg-gray-50 p-5 rounded-lg shadow-inner border border-gray-200 flex-1 w-full sm:w-auto">
+                       <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center justify-center">
+                           <i className="fas fa-calendar-alt text-teal-600 mr-3"></i> Journey Date: <span className="text-teal-700 ml-2">{date}</span>
+                       </h2>
+                       {has_segmented_dates && (
+                           <div className="travel-alert bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-md shadow-sm">
+                               <div className="flex items-center mb-2">
+                                   <i className="fas fa-exclamation-triangle text-yellow-600 text-xl mr-3"></i>
+                                   <h3 className="font-semibold text-lg">Date Selection for Overnight Journey</h3>
+                               </div>
+                               <p className="text-sm mb-3">
+                                   This train departs from <span className="font-medium">{stations[0]}</span> on <span className="font-medium">{date}</span>, but reaches certain stations after midnight — in the early hours of <span className="font-medium">{next_day_str}</span>. Ticket availability for those post-midnight arrivals may appear under <span className="font-medium">{next_day_str}</span>.
+                               </p>
+                               <div className="flex items-start text-sm bg-yellow-100 p-3 rounded-md border border-yellow-200">
+                                   <i className="fas fa-lightbulb text-yellow-700 text-lg mr-3 mt-1"></i>
+                                   <p>Tip: To find tickets for arrivals early on <span className="font-medium">{date}</span>, try searching with <span className="font-medium">{prev_day_str}</span> as your journey date.</p>
+                               </div>
+                           </div>
+                       )}
+                   </div>
+
+                   <button
+                       onClick={() => handleDateNavigation(1)}
+                       className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-teal-600 hover:to-cyan-700 transition-all duration-300 ease-in-out transform hover:scale-105"
+                   >
+                       Next Day <i className="fas fa-chevron-right ml-3"></i>
+                   </button>
+               </div>
+
+
+               <div className="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-200">
+                   <details
+                       className="route-collapse"
+                       open={isRouteExpanded}
+                       onToggle={() => setIsRouteExpanded(!isRouteExpanded)}
+                   >
+                       <summary className="cursor-pointer py-3 flex items-center justify-between text-lg font-semibold text-blue-700 hover:text-blue-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                           <span className="route-toggle-text flex items-center">
+                               <i className="fas fa-route mr-3 text-blue-600"></i>
+                               {isRouteExpanded ? 'Collapse to hide Train Route' : 'Expand to view Train Route'}
+                           </span>
+                           <i className={`fas fa-chevron-down ml-3 transition-transform duration-300 ${isRouteExpanded ? 'rotate-180' : 'rotate-0'}`}></i>
+                       </summary>
+
+                       <div ref={routeBodyRef} className={`overflow-hidden transition-all duration-400 ease-in-out ${isRouteExpanded ? 'opacity-100' : 'h-0 opacity-0'}`}>
+                           <div className="pt-4 border-t border-gray-200 mt-4">
+                               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                                   <h3 className="text-xl font-bold text-gray-800 flex items-center mb-2 sm:mb-0">
+                                       <i className="fas fa-subway text-purple-600 mr-2"></i> {train_name}
+                                   </h3>
+                                   <div className="flex flex-wrap items-center text-sm">
+                                       <span className="font-semibold text-gray-600 mr-3">Runs on:</span>
+                                       {['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(day => (
+                                           <span key={day} className={`px-2 py-0.5 rounded-full mr-2 mb-1 sm:mb-0 ${days.includes(day) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600 opacity-75'}`}>
+                                               {day}{!days.includes(day) && <sup className="ml-0.5 text-xs font-normal">(off)</sup>}
+                                           </span>
+                                       ))}
+                                   </div>
+                               </div>
+
+                               <div className="station-timeline relative pl-4 border-l-2 border-dashed border-blue-300">
+                                   {routes.map((stop, index) => (
+                                       <div key={index} className="flex items-start mb-6 last:mb-0">
+                                           <div className="flex flex-col items-center mr-4 -ml-5">
+                                               <div className={`w-4 h-4 rounded-full border-2 ${index === 0 ? 'bg-blue-600 border-blue-600' : index === routes.length - 1 ? 'bg-red-600 border-red-600' : 'bg-gray-400 border-gray-400'} flex items-center justify-center`}>
+                                                   <i className={`fas fa-location-dot text-white text-xs ${index === 0 ? 'scale-125' : index === routes.length - 1 ? 'scale-125' : ''}`}></i>
+                                               </div>
+                                               {index < routes.length - 1 && (
+                                                   <div className="w-0.5 flex-grow bg-blue-300 border-dashed border-l-2 border-blue-300 -mt-1 -mb-1"></div>
+                                               )}
+                                           </div>
+                                           <div className="flex-1 bg-gray-50 p-4 rounded-lg border border-gray-100 shadow-sm">
+                                               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
+                                                   <div className="text-lg font-bold text-gray-800 flex items-center">
+                                                       {stop.city}
+                                                       {stop.display_date && (
+                                                           <span className="ml-2 text-sm font-normal text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">{stop.display_date}</span>
+                                                       )}
+                                                       {index === 0 && <span className="ml-3 px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">Origin</span>}
+                                                       {index === routes.length - 1 && <span className="ml-3 px-3 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-full">Destination</span>}
+                                                   </div>
+                                               </div>
+                                               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-sm text-gray-600">
+                                                   <div><strong>Arrival:</strong> {stop.arrival_time ? stop.arrival_time.replace(' BST', '') : '———'}</div>
+                                                   <div><strong>Departure:</strong> {stop.departure_time ? stop.departure_time.replace(' BST', '') : '———'}</div>
+                                                   <div><strong>Halt:</strong> {stop.halt && stop.halt !== '---' ? `${parseInt(stop.halt)} min` : '———'}</div>
+                                                   <div><strong>Duration:</strong> {formatDuration(stop.duration)}</div>
+                                               </div>
+                                           </div>
+                                       </div>
+                                   ))}
+                               </div>
+
+                               <div className="total-journey-time text-center text-lg font-semibold text-gray-700 mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200 shadow-sm">
+                                   <i className="fas fa-clock text-blue-600 mr-2"></i> Total Duration: <span className="text-blue-800">{formatDuration(total_duration)}</span>
+                               </div>
+                           </div>
+                       </div>
+                   </details>
+               </div>
+
+               {seat_types.map(seat_type => {
+                   if (has_data_map[seat_type]) {
+                       const matrix = fare_matrices[seat_type];
+                       return (
+                           <div key={seat_type} className="bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-200">
+                               <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center justify-center">
+                                   <i className="fas fa-chair text-green-600 mr-3"></i> Seat Type: <span className="text-green-700 ml-2">{seat_type}</span>
+                               </h3>
+                               <div className="table-responsive overflow-auto rounded-lg shadow-inner border border-gray-200 cursor-grab active:cursor-grabbing">
+                                   <table className="min-w-full divide-y divide-gray-200 border-collapse">
+                                       <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
+                                           <tr>
+                                               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-r border-gray-200">From → To</th>
+                                               {stations.map(col => (
+                                                   <th key={col} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-r border-gray-200">{col}</th>
+                                               ))}
+                                           </tr>
+                                       </thead>
+                                       <tbody className="bg-white divide-y divide-gray-100">
+                                           {stations.map(from_station => (
+                                               <tr key={from_station}>
+                                                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white border-r border-gray-200 shadow-sm z-5">
+                                                       <strong>{from_station}</strong>
+                                                   </td>
+                                                   {stations.map(to_station => {
+                                                       const fromIndex = stations.indexOf(from_station);
+                                                       const toIndex = stations.indexOf(to_station);
+                                                       if (fromIndex >= toIndex) {
+                                                           return <td key={`${from_station}-${to_station}`} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 bg-gray-50 opacity-60"></td>;
+                                                       }
+
+                                                       const cell = matrix?.[from_station]?.[to_station];
+                                                       const totalSeats = cell ? (cell.online + cell.offline) : 0;
+                                                       const doj = station_dates_formatted[from_station] || date;
+
+                                                       return (
+                                                           <td key={`${from_station}-${to_station}`} className={`px-4 py-3 whitespace-nowrap text-sm ${totalSeats > 0 ? 'bg-white hover:bg-blue-50 transition-colors duration-150' : 'bg-gray-50 opacity-60'}`}>
+                                                               {totalSeats > 0 ? (
+                                                                   <div className="flex flex-col items-center space-y-1">
+                                                                       <span className="text-lg font-bold text-green-700">{totalSeats}</span>
+                                                                       <span className="text-xs text-gray-600 flex items-center">
+                                                                           <span className="text-yellow-600 font-bold mr-0.5">৳</span>
+                                                                           <span className="text-base font-semibold text-gray-800">{(cell.fare + (cell.vat_amount || 0)).toFixed(0)}</span>
+                                                                       </span>
+                                                                       <a
+                                                                           href={`https://eticket.railway.gov.bd/booking/train/search?fromcity=${from_station}&tocity=${to_station}&doj=${doj}&class=${seat_type}`}
+                                                                           className="inline-flex items-center px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded-full shadow hover:bg-blue-600 transition-colors duration-200 transform hover:scale-105"
+                                                                           target="_blank" rel="noopener noreferrer"
+                                                                       >
+                                                                           <i className="fas fa-external-link-alt mr-2 text-xs"></i> Buy
+                                                                       </a>
+                                                                   </div>
+                                                               ) : (
+                                                                   <span className="text-gray-400 text-xs">N/A</span>
+                                                               )}
+                                                           </td>
+                                                       );
+                                                   })}
+                                               </tr>
+                                           ))}
+                                       </tbody>
+                                   </table>
+                               </div>
+                           </div>
+                       );
+                   }
+                   return null;
+               })}
+
+
+               <div className="ca-check-availability-section bg-white p-6 rounded-lg shadow-md mb-8 border border-gray-200">
+                   <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center justify-center">
+                       <i className="fas fa-search text-orange-600 mr-3"></i> Check Ticket Availability
+                   </h2>
+                   <form onSubmit={handleFormSubmit} className="space-y-6">
+                       <div className="flex flex-col sm:flex-row items-center gap-4">
+                           <div className="relative flex-1 w-full" ref={originDropdownRef}>
+                               <label htmlFor="ca-origin-station-input" className="block text-sm font-medium text-gray-700 mb-1">From Station</label>
+                               <div className="relative">
+                                   <i className="fas fa-train absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                   <input
+                                       type="text"
+                                       id="ca-origin-station-input"
+                                       placeholder="Select from station"
+                                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 transition duration-200 cursor-pointer bg-gray-50"
+                                       readOnly
+                                       onClick={() => setShowOriginDropdown(!showOriginDropdown)}
+                                       value={originStationInput}
+                                   />
+                                   <input type="hidden" id="ca-origin-station" value={originStation} />
+                                   {showOriginDropdown && (
+                                       <div className="absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto mt-1">
+                                           <div className="py-1">
+                                               {stations.map(station => (
+                                                   <div
+                                                       key={station}
+                                                       className={`px-4 py-2 cursor-pointer hover:bg-blue-100 ${originStation === station ? 'bg-blue-500 text-white' : 'text-gray-900'}`}
+                                                       onClick={() => handleOriginSelect(station)}
+                                                       style={{ display: destinationStation === station ? 'none' : 'block' }}
+                                                   >
+                                                       {station}
+                                                   </div>
+                                               ))}
+                                           </div>
+                                       </div>
+                                   )}
+                               </div>
+                               <span id="ca-origin-station-error" className="text-red-500 text-xs mt-1 block" style={{ display: 'none' }}></span>
+                           </div>
+
+                           <div className="swap-icon-wrapper p-3 sm:p-2 bg-gray-100 rounded-full shadow-md cursor-pointer hover:bg-gray-200 transition-transform duration-300 ease-in-out transform hover:rotate-90 sm:mt-6" onClick={handleSwapStations}>
+                               <i className="fas fa-exchange-alt text-gray-600 text-xl"></i>
+                           </div>
+
+                           <div className="relative flex-1 w-full" ref={destinationDropdownRef}>
+                               <label htmlFor="ca-destination-station-input" className="block text-sm font-medium text-gray-700 mb-1">To Station</label>
+                               <div className="relative">
+                                   <i className="fas fa-train absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                   <input
+                                       type="text"
+                                       id="ca-destination-station-input"
+                                       placeholder="Select to station"
+                                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 transition duration-200 cursor-pointer bg-gray-50"
+                                       readOnly
+                                       onClick={() => setShowDestinationDropdown(!showDestinationDropdown)}
+                                       value={destinationStationInput}
+                                   />
+                                   <input type="hidden" id="ca-destination-station" value={destinationStation} />
+                                   {showDestinationDropdown && (
+                                       <div className="absolute z-20 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto mt-1">
+                                           <div className="py-1">
+                                               {stations.map(station => (
+                                                   <div
+                                                       key={station}
+                                                       className={`px-4 py-2 cursor-pointer hover:bg-blue-100 ${destinationStation === station ? 'bg-blue-500 text-white' : 'text-gray-900'}`}
+                                                       onClick={() => handleDestinationSelect(station)}
+                                                       style={{ display: originStation === station ? 'none' : 'block' }}
+                                                   >
+                                                       {station}
+                                                   </div>
+                                               ))}
+                                           </div>
+                                       </div>
+                                   )}
+                               </div>
+                               <span id="ca-destination-station-error" className="text-red-500 text-xs mt-1 block" style={{ display: 'none' }}></span>
+                           </div>
+                       </div>
+                       <div className="text-center">
+                           <button
+                               type="submit"
+                               className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-orange-600 hover:to-red-700 transition-all duration-300 ease-in-out transform hover:scale-105"
+                           >
+                               <i className="fas fa-search mr-3"></i> Check Availability
+                           </button>
+                       </div>
+                       <p className="text-center text-sm text-gray-500 mt-4 flex items-center justify-center">
+                           <i className="fas fa-info-circle mr-2 text-blue-500"></i>
+                           Ticket availability is shown based on the last matrix you generated. For the most accurate and updated results, please generate the matrix again.
+                       </p>
+                   </form>
+
+                   <div id="ca-route-results" className="mt-8 pt-6 border-t border-gray-200">
+                       {availabilityResults}
+                   </div>
+               </div>
+
+               <div className="flex justify-center mt-8">
+                   <a href="/" className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 ease-in-out transform hover:scale-105">
+                       <i className="fas fa-arrow-left mr-3"></i> Back to Search
+                   </a>
+               </div>
+           </div>
+
+           {/* Back to Top Button */}
+           <button
+               ref={backToTopBtnRef}
+               className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-300 ease-in-out transform -translate-y-full opacity-0 z-40"
+               aria-label="Back to top"
+           >
+               <i className="fas fa-arrow-up text-lg"></i>
+           </button>
+       </div>
+   );
+};
+
+export default App;
